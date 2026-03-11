@@ -118,6 +118,10 @@ abstract class AiVoiceCommand extends SlashCommand
         }
 
         try {
+            // Force a fresh voice identify flow per request.
+            // Prevents stale session resume issues (close 4006 invalid session).
+            $this->discord()->voice_sessions[$channel->guild_id] = null;
+
             $this->discord()->joinVoiceChannel($channel)->then(
                 function (VoiceClient $voice) use ($ttsPath) {
                     $voice->playFile($ttsPath)->then(

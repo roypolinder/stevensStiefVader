@@ -35,8 +35,13 @@ apt-get install -y \
   php-bcmath \
   php-sqlite3 \
   php-readline \
-  php-opcache \
-  php-sodium
+  php-opcache
+
+if apt-cache show php-sodium >/dev/null 2>&1; then
+  apt-get install -y php-sodium
+else
+  echo "php-sodium package not found (expected on newer distro; sodium is usually built into PHP)."
+fi
 
 echo "[4/6] install FFI extension"
 if apt-cache show php-ffi >/dev/null 2>&1; then
