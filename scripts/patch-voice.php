@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 $wsTarget = __DIR__.'/../vendor/discord-php-helpers/voice/src/Discord/Voice/Client/WS.php';
 $packetTarget = __DIR__.'/../vendor/discord-php-helpers/voice/src/Discord/Voice/Client/Packet.php';
+$voiceClientTarget = __DIR__.'/../vendor/discord-php-helpers/voice/src/Discord/Voice/VoiceClient.php';
 
-if (! file_exists($wsTarget) || ! file_exists($packetTarget)) {
+if (! file_exists($wsTarget) || ! file_exists($packetTarget) || ! file_exists($voiceClientTarget)) {
     fwrite(STDOUT, "[patch-voice] Skipped: vendor voice files not found.\n");
     exit(0);
 }
@@ -125,6 +126,16 @@ $keyLength = $this->key ? strlen($this->key) : 0;
         $nonceBuffer = str_pad($nonce, SODIUM_CRYPTO_AEAD_AES256GCM_NPUBBYTES, "\0", STR_PAD_RIGHT);
 TXT,
         'label' => 'Packet XChaCha decrypt',
+    ],
+    [
+        'file' => $voiceClientTarget,
+        'find' => <<<'TXT'
+public ?TimerInterface $readOpusTimer;
+TXT,
+        'replace' => <<<'TXT'
+public ?TimerInterface $readOpusTimer = null;
+TXT,
+        'label' => 'VoiceClient readOpusTimer init',
     ],
 ];
 
