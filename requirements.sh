@@ -76,5 +76,6 @@ ffmpeg -version | head -n 1 || true
 echo
 echo "Next steps in project root:"
 echo "  composer install"
+echo "  php scripts/patch-voice.php"
 echo "  cp .env.example .env   # if needed"
 echo "  php laracord"
