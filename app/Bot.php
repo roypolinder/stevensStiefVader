@@ -2,13 +2,20 @@
 
 namespace App;
 
+use App\Logging\VerboseLogger;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
+use Laracord\Logging\Logger;
 use Laracord\Laracord;
 use Throwable;
 
 class Bot extends Laracord
 {
+    public function getLogger(): Logger
+    {
+        return $this->logger ??= VerboseLogger::make($this->console);
+    }
+
     public function unregisterApplicationCommand(string $id, ?string $guildId = null): void
     {
         cache()->forget('laracord.application-commands');
