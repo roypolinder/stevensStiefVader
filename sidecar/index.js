@@ -107,6 +107,13 @@ app.post('/play', async (req, res) => {
 
         connection.on('stateChange', (oldState, newState) => {
             console.log(`[sidecar] Voice connectie: ${oldState.status} -> ${newState.status}`);
+            if (newState.status === VoiceConnectionStatus.Connecting) {
+                const ws = newState.networking?.state?.ws;
+                if (ws) {
+                    ws.on('error', (e) => console.error('[sidecar] Voice WS error:', e.message));
+                    ws.on('close', (code, reason) => console.error(`[sidecar] Voice WS close: ${code} ${reason}`));
+                }
+            }
         });
 
         connection.on('error', (err) => {
