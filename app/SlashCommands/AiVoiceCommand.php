@@ -6,8 +6,8 @@ use App\Support\AiVoiceResponder;
 use App\Commands\SlashCommand;
 use Discord\Parts\Channel\Channel;
 use Discord\Parts\Interactions\Interaction;
-use Discord\Voice\VoiceClient;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -96,19 +96,11 @@ abstract class AiVoiceCommand extends SlashCommand
 
     protected function playVoice(Interaction $interaction, string $text, Channel $channel): void
     {
-        try {
-            $ttsPath = $this->ai()->ttsToFile($text);
-        } catch (Throwable) {
-            return;
-        }
+        $sidecarUrl = rtrim((string) config('ai_voice.sidecar_url', ''), '/');
 
-        if (! $this->canPlayVoice()) {
-            if (File::exists($ttsPath)) {
-                File::delete($ttsPath);
-            }
-
+        if (! $sidecarUrl) {
             $interaction->sendFollowUpMessage(
-                $this->message('Voice is niet beschikbaar op deze server (FFI/Opus ontbreekt). Antwoord staat wel in de chat.')
+                $this->message('Voice sidecar is niet geconfigureerd (`VOICE_SIDECAR_URL`). Antwoord staat wel in de chat.')
                     ->title('TTS fallback')
                     ->warning()
                     ->build()
@@ -118,40 +110,39 @@ abstract class AiVoiceCommand extends SlashCommand
         }
 
         try {
-            // Force a fresh voice identify flow per request.
-            // Prevents stale session resume issues (close 4006 invalid session).
-            $this->discord()->voice_sessions[$channel->guild_id] = null;
+            $ttsPath = $this->ai()->ttsToFile($text);
+        } catch (Throwable $e) {
+            Log::error('TTS generatie mislukt', [
+                'command' => $this->getName(),
+                'message' => $e->getMessage(),
+            ]);
 
-            $this->discord()->joinVoiceChannel($channel)->then(
-                function (VoiceClient $voice) use ($ttsPath) {
-                    $voice->playFile($ttsPath)->then(
-                        fn () => $this->cleanupVoicePlayback($voice, $ttsPath),
-                        fn () => $this->cleanupVoicePlayback($voice, $ttsPath)
-                    );
-                },
-                function () use ($interaction, $ttsPath) {
-                    if (File::exists($ttsPath)) {
-                        File::delete($ttsPath);
-                    }
+            return;
+        }
 
-                    $interaction->sendFollowUpMessage(
-                        $this->message('Voice afspelen lukte niet, maar je antwoord staat in de chat.')
-                            ->title('TTS fallback')
-                            ->warning()
-                            ->build()
-                    );
-                }
-            );
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'X-Voice-Token' => (string) config('ai_voice.sidecar_token', ''),
+                ])
+                ->post("{$sidecarUrl}/play", [
+                    'guildId'   => $channel->guild_id,
+                    'channelId' => $channel->id,
+                    'filePath'  => $ttsPath,
+                ]);
+
+            if (! $response->successful()) {
+                throw new \RuntimeException('Sidecar antwoordde met HTTP '.$response->status().': '.$response->body());
+            }
         } catch (Throwable $e) {
             if (File::exists($ttsPath)) {
                 File::delete($ttsPath);
             }
 
-            $this->console()->warn('Voice playback unavailable: '.$e->getMessage());
-            Log::error('Voice playback unavailable', [
+            $this->console()->warn('Voice sidecar aanroep mislukt: '.$e->getMessage());
+            Log::error('Voice sidecar aanroep mislukt', [
                 'command' => $this->getName(),
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             $interaction->sendFollowUpMessage(
@@ -160,32 +151,6 @@ abstract class AiVoiceCommand extends SlashCommand
                     ->warning()
                     ->build()
             );
-        }
-    }
-
-    protected function canPlayVoice(): bool
-    {
-        if (! extension_loaded('FFI')) {
-            return false;
-        }
-
-        $ffiEnabled = strtolower((string) ini_get('ffi.enable'));
-
-        return in_array($ffiEnabled, ['1', 'true', 'preload'], true);
-    }
-
-    protected function cleanupVoicePlayback(VoiceClient $voice, string $ttsPath): void
-    {
-        if (File::exists($ttsPath)) {
-            File::delete($ttsPath);
-        }
-
-        try {
-            if ($voice->isReady()) {
-                $voice->close();
-            }
-        } catch (Throwable) {
-            // ignore cleanup failures
         }
     }
 }

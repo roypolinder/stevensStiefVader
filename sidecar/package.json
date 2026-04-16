@@ -1,0 +1,17 @@
+{
+  "name": "stevensstiefvader-voice-sidecar",
+  "version": "1.0.0",
+  "description": "Node.js voice sidecar for Stevens Stiefvader Discord bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.9.0",
+    "@discordjs/voice": "^0.17.0",
+    "discord.js": "^14.14.1",
+    "express": "^4.18.2",
+    "dotenv": "^16.4.5",
+    "ffmpeg-static": "^5.2.0"
+  }
+}
