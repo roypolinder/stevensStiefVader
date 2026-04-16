@@ -107,12 +107,13 @@ app.post('/play', async (req, res) => {
 
         connection.on('stateChange', (oldState, newState) => {
             console.log(`[sidecar] Voice connectie: ${oldState.status} -> ${newState.status}`);
-            if (newState.status === VoiceConnectionStatus.Connecting) {
-                const ws = newState.networking?.state?.ws;
-                if (ws) {
-                    ws.on('error', (e) => console.error('[sidecar] Voice WS error:', e.message));
-                    ws.on('close', (code, reason) => console.error(`[sidecar] Voice WS close: ${code} ${reason}`));
-                }
+            if (newState.networking) {
+                newState.networking.on('stateChange', (o, n) => {
+                    console.log(`[sidecar] Networking: ${o.code ?? o.constructor.name} -> ${n.code ?? n.constructor.name}`);
+                });
+                newState.networking.on('error', (e) => {
+                    console.error(`[sidecar] Networking error: ${e.message}`);
+                });
             }
         });
 
