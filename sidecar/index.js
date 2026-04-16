@@ -21,7 +21,7 @@ const fs = require('fs');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PORT         = parseInt(process.env.VOICE_SIDECAR_PORT  || '3001', 10);
-const TOKEN        = process.env.DISCORD_TOKEN;
+const TOKEN        = process.env.VOICE_BOT_TOKEN;
 const VOICE_SECRET = process.env.VOICE_SIDECAR_TOKEN || '';
 
 if (!TOKEN) {
