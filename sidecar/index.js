@@ -88,6 +88,7 @@ app.post('/play', async (req, res) => {
 
     try {
         const guild = await client.guilds.fetch(guildId);
+        console.log(`[sidecar] Guild gevonden: ${guild.name}`);
 
         const connection = joinVoiceChannel({
             channelId,
@@ -96,7 +97,17 @@ app.post('/play', async (req, res) => {
             selfDeaf: false,
         });
 
+        connection.on('stateChange', (oldState, newState) => {
+            console.log(`[sidecar] Voice connectie: ${oldState.status} -> ${newState.status}`);
+        });
+
+        connection.on('error', (err) => {
+            console.error(`[sidecar] Voice connectie error: ${err.message}`);
+        });
+
+        console.log(`[sidecar] Wacht op Ready...`);
         await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
+        console.log(`[sidecar] Ready! Start afspelen: ${filePath}`);
 
         const player   = createAudioPlayer();
         const resource = createAudioResource(filePath);
