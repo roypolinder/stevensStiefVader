@@ -87,7 +87,15 @@ app.post('/play', async (req, res) => {
     res.json({ ok: true });
 
     try {
-        const guild = await client.guilds.fetch(guildId);
+        // Use cached guild (from gateway) instead of REST fetch.
+        // voiceAdapterCreator only works correctly with a gateway-cached guild.
+        let guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            console.log(`[sidecar] Guild niet in cache, probeer via gateway te fetchen...`);
+            guild = await client.guilds.fetch(guildId);
+            // Force cache the guild members/channels so adapter works
+            await guild.fetch();
+        }
         console.log(`[sidecar] Guild gevonden: ${guild.name}`);
 
         const connection = joinVoiceChannel({
